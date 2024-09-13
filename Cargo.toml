@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-solana-program = { git = "https://github.com/dbcfd/solana.git", branch = "fix/deps"}
-swiftness_stark = { path = "../swiftness/crates/stark" }
+bincode = "1.3.3"
+solana-program = { git = "https://github.com/Okm165/solana.git", branch = "fix/deps"}
+swiftness_air = { path = "../swiftness/crates/air", default-features = false, features = ["recursive", "keccak_160_lsb", "stone5"] }
+swiftness_stark = { path = "../swiftness/crates/stark", default-features = false, features = ["recursive", "keccak_160_lsb", "stone5"] }
 
 [lib]
-name = "hello_world"
+name = "swiftness"
 crate-type = ["cdylib", "lib"]
