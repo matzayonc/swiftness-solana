@@ -1,0 +1,12 @@
+[package]
+name = "swiftness-solana"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+solana-program = { git = "https://github.com/dbcfd/solana.git", branch = "fix/deps"}
+swiftness_stark = { path = "../swiftness/crates/stark" }
+
+[lib]
+name = "hello_world"
+crate-type = ["cdylib", "lib"]
