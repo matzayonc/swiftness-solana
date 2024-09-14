@@ -15,9 +15,6 @@ pub fn process_instruction(
     _accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    // log a message to the blockchain
-    msg!("Stark verifier");
-
     let stark_proof: StarkProof =
         bincode::deserialize(instruction_data).map_err(|_| ProgramError::InvalidArgument)?;
     let security_bits = stark_proof.config.security_bits();
