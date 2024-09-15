@@ -4,7 +4,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use swiftness_air::layout::recursive::Layout;
-use swiftness_stark::types::StarkProof;
+use swiftness_stark::types::StarkProof as StarkProofVerifier;
 
 // declare and export the program's entrypoint
 entrypoint!(process_instruction);
@@ -15,7 +15,7 @@ pub fn process_instruction(
     _accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    let stark_proof: StarkProof =
+    let stark_proof: StarkProofVerifier =
         bincode::deserialize(instruction_data).map_err(|_| ProgramError::InvalidArgument)?;
     let security_bits = stark_proof.config.security_bits();
     let result = stark_proof
