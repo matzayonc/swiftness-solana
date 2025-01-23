@@ -11,7 +11,6 @@ use solana_sdk::{
 };
 use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
 use swiftness_solana::{Entrypoint, PROGRAM_ID};
-use tokio::fs;
 
 const CHUNK_SIZE: usize = 500;
 
