@@ -86,6 +86,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = RpcClient::new(config.json_rpc_url);
     let payer = Keypair::read_from_file(config.keypair_path)?;
 
+    println!("Using keypair {}, at {}", payer.pubkey(), client.url());
+
     let stark_proof = include_bytes!("../resources/proof.bin");
 
     let proof_data_account = Keypair::new();
@@ -139,39 +141,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect::<Vec<_>>();
 
-    let _results = dbg!(send_transactions(&client, &transactions).await);
+    let _results = send_transactions(&client, &transactions).await;
 
-    tokio::time::sleep(Duration::from_secs(20)).await;
+    loop {
+        let data = client
+            .get_account_data(&proof_data_account.pubkey())
+            .await?;
 
-    let meta = client.get_account(&proof_data_account.pubkey()).await?;
-    dbg!(&meta);
+        if data.eq(stark_proof) {
+            println!("proof_data_account correct!");
+            break;
+        } else {
+            println!("proof_data_account data not maching!");
+            sleep(Duration::from_secs(1));
+        }
+    }
 
-    let data = client
-        .get_account_data(&proof_data_account.pubkey())
-        .await?;
+    let ix = Instruction {
+        program_id,
+        accounts: vec![AccountMeta::new(proof_data_account.pubkey(), false)],
+        data: bincode::serialize(&Entrypoint::VerifyProof {}).unwrap(),
+    };
 
-    assert_eq!(data.len(), stark_proof.len());
-    fs::write("proof_data_account.bin", &data).await?;
-    assert_eq!(data, stark_proof);
+    let blockhash = client.get_latest_blockhash().await.unwrap();
+    let tx = Transaction::new_signed_with_payer(&[ix], Some(&payer.pubkey()), &[&payer], blockhash);
 
-    println!("done");
-
-    // sleep(Duration::from_millis(200));
-    // }
-
-    // loop {
-    //     let data = client
-    //         .get_account_data(&proof_data_account.pubkey())
-    //         .await?;
-
-    //     if data.eq(stark_proof) {
-    //         println!("proof_data_account correct!");
-    //         break;
-    //     } else {
-    //         println!("proof_data_account data not maching!");
-    //         sleep(Duration::from_secs(5));
-    //     }
-    // }
+    client.send_and_confirm_transaction(&tx).await.unwrap();
 
     Ok(())
 }

@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use serde::{Deserialize, Serialize};
 use solana_program::account_info::next_account_info;
 use solana_program::entrypoint;
@@ -22,6 +20,23 @@ pub enum Entrypoint<'a> {
     VerifyProof {},
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct StarkProfAccount {
+    pub stark_proof: MockStarkProof,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+struct MockStarkProof {
+    pub stark_proof: [u8; 64577],
+}
+
+unsafe impl bytemuck::Pod for StarkProfAccount {}
+unsafe impl bytemuck::Zeroable for StarkProfAccount {}
+unsafe impl bytemuck::Pod for MockStarkProof {}
+unsafe impl bytemuck::Zeroable for MockStarkProof {}
+
 // program entrypoint's implementation
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -31,15 +46,11 @@ pub fn process_instruction(
     // if program_id != &Pubkey::from_str(PROGRAM_ID).unwrap() {
     //     return Err(ProgramError::Custom(1));
     // }
-    msg!("start: {:?}", program_id);
     let instruction: Entrypoint = bincode::deserialize(instruction_data).unwrap();
     msg!("instruction");
     let accounts_iter = &mut account_info.iter();
 
-    msg!("accounts_iter");
-
     let account = next_account_info(accounts_iter).unwrap();
-    msg!("account");
     assert!(account.is_writable == true);
     let mut account_data = account.try_borrow_mut_data()?;
     msg!("account_data");
@@ -51,12 +62,15 @@ pub fn process_instruction(
             msg!("PublishFragment");
         }
         Entrypoint::VerifyProof {} => {
-            let stark_proof: StarkProofVerifier = bincode::deserialize(&account_data).unwrap();
-            msg!("VerifyProof");
+            // let stark_proof: StarkProofVerifier = bincode::deserialize(&account_data).unwrap();
+            let stark_proof = bytemuck::from_bytes::<MockStarkProof>(&account_data);
+
+            msg!(
+                "VerifyProof with deserialize {}",
+                stark_proof.stark_proof.len()
+            );
         }
     }
-
-    msg!("done");
 
     // let stark_proof: StarkProofVerifier =
     //     bincode::deserialize(instruction_data).map_err(|_| ProgramError::InvalidArgument)?;
@@ -73,8 +87,8 @@ pub fn process_instruction(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use swiftness::{stark_proof, types::StarkProof as StarkProofVerifier, TransformTo};
-    use swiftness_proof_parser::parse;
+    use swiftness::{types::StarkProof as StarkProofVerifier, TransformTo};
+    use swiftness_proof_parser::{parse, stark_proof};
 
     #[test]
     fn test_deserialize_proof() {
@@ -107,5 +121,15 @@ mod tests {
             program_hash.to_hex_string(),
             "0x2820cfb261b9ffa9f5fe7af15ff3d4df545154f26bfd4f234d1f6ba18171157"
         );
+    }
+
+    #[test]
+    fn zero_copy_stark_proof() {
+        let proof_bytes = include_bytes!("../resources/proof.bin");
+
+        dbg!(&proof_bytes.len());
+
+        let stark_proof = bytemuck::from_bytes::<MockStarkProof>(proof_bytes);
+        dbg!(&stark_proof);
     }
 }
