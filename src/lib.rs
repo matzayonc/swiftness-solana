@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use solana_program::account_info::next_account_info;
 use solana_program::entrypoint;
+use solana_program::program_error::ProgramError;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 // declare and export the program's entrypoint
@@ -56,6 +57,8 @@ pub fn process_instruction(
                 "VerifyProof with deserialize {}",
                 stark_proof.stark_proof.len()
             );
+
+            return Err(ProgramError::Custom(42));
         }
     }
 
