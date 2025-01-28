@@ -9,8 +9,9 @@ use solana_sdk::{
     signer::{EncodableKey, Signer},
     transaction::{Transaction, TransactionError},
 };
-use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
-use swiftness_solana::{Entrypoint, PROGRAM_ID};
+use std::{path::PathBuf, str::FromStr};
+use swiftness::types::StarkProof;
+use swiftness_solana::{read_proof, Entrypoint, PROGRAM_ID};
 
 #[derive(Debug, Deserialize)]
 #[non_exhaustive]
@@ -31,12 +32,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Using keypair {}, at {}", payer.pubkey(), client.url());
 
-    let stark_proof = include_bytes!("../resources/proof.bin");
-
-    let data_address = Pubkey::from_str("3ydMTAgs95qG2CJtbBRZoFLDpS3ZjdH1XDyaNC5N3PeH").unwrap();
+    let data_address = Pubkey::from_str("4yzECgYV5S2pZ83AvQxQQ9hnoaA85rE7aRvVpbPUZEA9").unwrap();
     let data = client.get_account_data(&data_address).await?;
 
-    if data != stark_proof {
+    let stark_proof = bytemuck::from_bytes::<StarkProof>(&data);
+
+    if stark_proof != &read_proof() {
         eprintln!("data in the account does not match the proof");
         return Ok(());
     }
