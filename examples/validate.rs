@@ -1,23 +1,29 @@
 use serde::Deserialize;
 use solana_rpc_client::nonblocking::rpc_client::RpcClient;
-use solana_rpc_client_api::{client_error::ErrorKind, config::RpcSendTransactionConfig};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
-    instruction::{AccountMeta, Instruction, InstructionError},
+    compute_budget::ComputeBudgetInstruction,
+    instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     signature::Keypair,
     signer::{EncodableKey, Signer},
-    transaction::{Transaction, TransactionError},
+    transaction::Transaction,
 };
 use std::{path::PathBuf, str::FromStr};
-use swiftness::types::StarkProof;
-use swiftness_solana::{read_proof, Entrypoint, PROGRAM_ID};
+use swiftness::{parse, types::StarkProof, TransformTo};
+use swiftness_solana::{Entrypoint, PROGRAM_ID};
 
 #[derive(Debug, Deserialize)]
 #[non_exhaustive]
 struct SolanaConfig {
     json_rpc_url: String,
     keypair_path: PathBuf,
+}
+
+pub fn read_proof() -> StarkProof {
+    let small_json = include_str!("../resources/small.json");
+    let stark_proof = parse(small_json).unwrap();
+    stark_proof.transform_to()
 }
 
 #[tokio::main]
@@ -32,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Using keypair {}, at {}", payer.pubkey(), client.url());
 
-    let data_address = Pubkey::from_str("4yzECgYV5S2pZ83AvQxQQ9hnoaA85rE7aRvVpbPUZEA9").unwrap();
+    let data_address = Pubkey::from_str("3wmAWA8VC1SvmyaAt1oneZybrmxTTsg1L5dhMfrtE3ip").unwrap();
     let data = client.get_account_data(&data_address).await?;
 
     let stark_proof = bytemuck::from_bytes::<StarkProof>(&data);
@@ -49,34 +55,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let blockhash = client.get_latest_blockhash().await?;
-    let tx = Transaction::new_signed_with_payer(&[ix], Some(&payer.pubkey()), &[&payer], blockhash);
 
-    let res = client
-        .send_and_confirm_transaction_with_spinner_and_config(
-            &tx,
-            CommitmentConfig::processed(),
-            RpcSendTransactionConfig {
-                skip_preflight: true,
-                max_retries: Some(10),
-                ..Default::default()
-            },
-        )
-        .await;
+    let tx = Transaction::new_signed_with_payer(
+        &[
+            ComputeBudgetInstruction::request_heap_frame(32 * 1024),
+            // ComputeBudgetInstruction::set_compute_unit_limit(1400_000),
+            ix,
+        ],
+        Some(&payer.pubkey()),
+        &[&payer],
+        blockhash,
+    );
 
-    if let Err(e) = res {
-        if let ErrorKind::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(code),
-        )) = e.kind
-        {
-            println!("Verification failed with code {}", code);
-        } else {
-            println!("Verification failed without custom code");
-            eprintln!("{:?}", e);
-        }
-    } else {
-        println!("Verification successful");
-    }
+    client.send_and_confirm_transaction(&tx).await.unwrap();
+
+    // let res = client
+    //     .send_and_confirm_transaction_with_spinner_and_config(
+    //         &tx,
+    //         CommitmentConfig::processed(),
+    //         RpcSendTransactionConfig {
+    //             skip_preflight: true,
+    //             max_retries: Some(10),
+    //             ..Default::default()
+    //         },
+    //     )
+    //     .await;
+
+    // if let Err(e) = res {
+    //     if let ErrorKind::TransactionError(TransactionError::InstructionError(
+    //         _,
+    //         InstructionError::Custom(code),
+    //     )) = e.kind
+    //     {
+    //         println!("Verification failed with code {}", code);
+    //     } else {
+    //         println!("Verification failed without custom code");
+    //         eprintln!("{:?}", e);
+    //     }
+    // } else {
+    //     println!("Verification successful");
+    // }
 
     Ok(())
 }

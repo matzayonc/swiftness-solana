@@ -10,7 +10,8 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
-use swiftness_solana::{read_proof, Entrypoint, PROGRAM_ID};
+use swiftness::{parse, types::StarkProof, TransformTo};
+use swiftness_solana::{Entrypoint, PROGRAM_ID};
 
 const CHUNK_SIZE: usize = 500;
 
@@ -35,6 +36,12 @@ async fn send_transactions(
     }
 
     results
+}
+
+pub fn read_proof() -> StarkProof {
+    let small_json = include_str!("../resources/small.json");
+    let stark_proof = parse(small_json).unwrap();
+    stark_proof.transform_to()
 }
 
 /// Creates a `Transaction` to create an account with rent exemption
@@ -163,7 +170,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("proof_data_account correct!");
             break;
         } else {
-            println!("proof_data_account data not maching!");
+            println!("proof_data_account data not matching!");
             sleep(Duration::from_secs(1));
         }
     }

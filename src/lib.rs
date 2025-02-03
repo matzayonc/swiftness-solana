@@ -4,7 +4,11 @@ use solana_program::entrypoint;
 use solana_program::program_error::ProgramError;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
-use swiftness::{types::StarkProof, TransformTo};
+use swiftness::types::StarkProof;
+use swiftness_air::layout::recursive::Layout;
+
+#[cfg(feature = "custom-heap")]
+mod allocator;
 
 // declare and export the program's entrypoint
 entrypoint!(process_instruction);
@@ -45,10 +49,10 @@ pub fn process_instruction(
         Entrypoint::VerifyProof {} => {
             let stark_proof = bytemuck::from_bytes::<StarkProof>(&account_data);
 
-            msg!(
-                "VerifyProof with {} security_bits",
-                stark_proof.config.security_bits()
-            );
+            let security_bits = stark_proof.config.security_bits();
+            stark_proof.verify::<Layout>(security_bits).unwrap();
+
+            msg!("VerifyProof with {} security_bits", security_bits);
 
             return Err(ProgramError::Custom(42));
         }
@@ -57,18 +61,16 @@ pub fn process_instruction(
     Ok(())
 }
 
-pub fn read_proof() -> StarkProof {
-    let proof_bytes = include_bytes!("../../swiftness/proof_parser/tests/proof.bin");
-    bincode::deserialize::<swiftness_proof_parser::stark_proof::StarkProof>(proof_bytes)
-        .unwrap()
-        .transform_to()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use swiftness::types::StarkProof;
-    use swiftness_air::layout::recursive::Layout;
+    use swiftness::{parse, types::StarkProof, TransformTo};
+
+    pub fn read_proof() -> StarkProof {
+        let small_json = include_str!("../resources/small.json");
+        let stark_proof = parse(small_json).unwrap();
+        stark_proof.transform_to()
+    }
 
     #[test]
     fn test_deserialize_proof() {
