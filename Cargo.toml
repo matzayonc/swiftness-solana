@@ -1,5 +1,5 @@
 [package]
-name = "swiftness_solana"
+name = "swiftness-solana"
 version = "0.1.0"
 edition = "2021"
 
@@ -27,18 +27,17 @@ swiftness_stark = { path = "../swiftness/crates/stark", default-features = false
     "keccak_160_lsb",
     "stone6",
 ] }
-swiftness = { path = "../swiftness/cli", default-features = false, features = [
-    "recursive",
-    "keccak_160_lsb",
-    "stone6",
-] }
 
 [patch.crates-io]
 starknet-core = { path = "../starknet-rs/starknet-core" }
 
 [dev-dependencies]
 swiftness_proof_parser = { path = "../swiftness/proof_parser" }
-
+swiftness = { path = "../swiftness/cli", default-features = false, features = [
+    "recursive",
+    "keccak_160_lsb",
+    "stone6",
+] }
 solana-rpc-client = "2.0.9"
 solana-rpc-client-api = "2.0.9"
 solana-sdk = { version = "2.0.9", features = ["borsh"] }

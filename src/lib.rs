@@ -4,8 +4,8 @@ use solana_program::entrypoint;
 use solana_program::program_error::ProgramError;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
-use swiftness::types::StarkProof;
 use swiftness_air::layout::recursive::Layout;
+use swiftness_stark::types::StarkProof;
 
 #[cfg(feature = "custom-heap")]
 mod allocator;
@@ -50,9 +50,17 @@ pub fn process_instruction(
             let stark_proof = bytemuck::from_bytes::<StarkProof>(&account_data);
 
             let security_bits = stark_proof.config.security_bits();
-            stark_proof.verify::<Layout>(security_bits).unwrap();
+            let (program_hash, output) = stark_proof.verify::<Layout>(security_bits).unwrap();
 
-            msg!("VerifyProof with {} security_bits", security_bits);
+            msg!("Verified proof with {} security_bits", security_bits);
+
+            let output = output
+                .into_iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            msg!("Output [{}], Program_hash: {}", output, program_hash);
 
             return Err(ProgramError::Custom(42));
         }
@@ -80,6 +88,17 @@ mod tests {
         let stark_proof = bytemuck::from_bytes::<StarkProof>(stark_proof_memory);
 
         let security_bits = stark_proof.config.security_bits();
-        let _result = stark_proof.verify::<Layout>(security_bits).unwrap();
+        let (program_hash, output) = stark_proof.verify::<Layout>(security_bits).unwrap();
+
+        let output = output
+            .into_iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            program_hash.to_string(),
+            "1134405407503728996667931466883426118808998438966777289406309056327695405399"
+        );
+        assert_eq!(output, vec!["0", "1", "5"]);
     }
 }

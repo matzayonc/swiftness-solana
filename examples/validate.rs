@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Using keypair {}, at {}", payer.pubkey(), client.url());
 
-    let data_address = Pubkey::from_str("3wmAWA8VC1SvmyaAt1oneZybrmxTTsg1L5dhMfrtE3ip").unwrap();
+    let data_address = Pubkey::from_str("3JvWAChV5iSus4r1PUQjC2XMfGgSoYztri1ZifEnneDq").unwrap();
     let data = client.get_account_data(&data_address).await?;
 
     let stark_proof = bytemuck::from_bytes::<StarkProof>(&data);
