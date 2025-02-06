@@ -11,7 +11,7 @@ use solana_sdk::{
 };
 use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
 use swiftness::{parse, types::StarkProof, TransformTo};
-use swiftness_solana::{Entrypoint, PROGRAM_ID};
+use swiftness_solana::{Entrypoint, ProofAccount, PROGRAM_ID};
 
 const CHUNK_SIZE: usize = 500;
 
@@ -95,7 +95,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Using keypair {}, at {}", payer.pubkey(), client.url());
 
     // let stark_proof = include_bytes!("../resources/proof.bin");
-    let stark_proof_value = read_proof();
+    let stark_proof_value = ProofAccount {
+        proof: read_proof(),
+        ..Default::default()
+    };
     let stark_proof = bytemuck::bytes_of(&stark_proof_value);
 
     let proof_data_account = Keypair::new();
@@ -119,12 +122,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Allocate data instructions
 
     for (big_chunk, big_data) in stark_proof.chunks(CHUNK_SIZE * 20).enumerate() {
-        let blockhash = client
-            .get_latest_blockhash()
-            .await
-            .expect("failed to connect to rpc");
-
         loop {
+            let blockhash = client
+                .get_latest_blockhash()
+                .await
+                .expect("failed to connect to rpc");
             let instructions: Vec<Instruction> = big_data
                 .chunks(CHUNK_SIZE)
                 .enumerate()

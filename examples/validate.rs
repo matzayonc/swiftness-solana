@@ -11,7 +11,7 @@ use solana_sdk::{
 };
 use std::{path::PathBuf, str::FromStr};
 use swiftness::{parse, types::StarkProof, TransformTo};
-use swiftness_solana::{Entrypoint, PROGRAM_ID};
+use swiftness_solana::{verify_recursive_bytes, Entrypoint, ProofAccount, PROGRAM_ID};
 
 #[derive(Debug, Deserialize)]
 #[non_exhaustive]
@@ -38,14 +38,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Using keypair {}, at {}", payer.pubkey(), client.url());
 
-    let data_address = Pubkey::from_str("3JvWAChV5iSus4r1PUQjC2XMfGgSoYztri1ZifEnneDq").unwrap();
-    let data = client.get_account_data(&data_address).await?;
+    let data_address = Pubkey::from_str("7vWJWEhHxm7oxtoeuptEEW5KDnCrHsK3RNsyxaT1szCX").unwrap();
+    let mut data = client.get_account_data(&data_address).await?;
 
-    let stark_proof = bytemuck::from_bytes::<StarkProof>(&data);
-
-    if stark_proof != &read_proof() {
+    let proof_account = bytemuck::from_bytes::<ProofAccount>(&data);
+    if proof_account.proof != read_proof() {
         eprintln!("data in the account does not match the proof");
-        return Ok(());
+    } else {
+        if let Err(e) = verify_recursive_bytes(&mut data) {
+            eprintln!("Local verification failed: {:?}", e);
+        }
     }
 
     let ix = Instruction {

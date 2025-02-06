@@ -5,7 +5,7 @@ use solana_program::program_error::ProgramError;
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 use swiftness_air::layout::recursive::Layout;
-use swiftness_stark::types::StarkProof;
+pub use swiftness_stark::types::{Cache, Felt, StarkProof};
 
 #[cfg(feature = "custom-heap")]
 mod allocator;
@@ -20,6 +20,13 @@ pub const PROGRAM_ID: &str = "GiakVnic8keq93sh2TBx8X51Snqqi1FwcPhFyze7YnkU";
 pub enum Entrypoint<'a> {
     PublishFragment { offset: usize, data: &'a [u8] },
     VerifyProof {},
+}
+
+#[derive(Clone, Copy, Default, bytemuck::Zeroable, bytemuck::Pod)]
+#[repr(C)]
+pub struct ProofAccount {
+    pub proof: StarkProof,
+    pub cache: Cache,
 }
 
 // program entrypoint's implementation
@@ -47,20 +54,17 @@ pub fn process_instruction(
         }
 
         Entrypoint::VerifyProof {} => {
-            let stark_proof = bytemuck::from_bytes::<StarkProof>(&account_data);
-
-            let security_bits = stark_proof.config.security_bits();
-            let (program_hash, output) = stark_proof.verify::<Layout>(security_bits).unwrap();
-
-            msg!("Verified proof with {} security_bits", security_bits);
-
-            let output = output
-                .into_iter()
-                .map(|v| v.to_string())
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            msg!("Output [{}], Program_hash: {}", output, program_hash);
+            let (program_hash, output) = verify_recursive_bytes(&mut account_data).unwrap();
+            msg!("VerifyProof");
+            msg!("Program hash: {}", program_hash);
+            msg!(
+                "Output: [{}]",
+                output
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
 
             return Err(ProgramError::Custom(42));
         }
@@ -69,26 +73,39 @@ pub fn process_instruction(
     Ok(())
 }
 
+pub fn verify_recursive_bytes(
+    proof_account: &mut [u8],
+) -> Result<(Felt, Vec<Felt>), ProgramResult> {
+    let ProofAccount { proof, mut cache } = bytemuck::from_bytes::<ProofAccount>(&proof_account);
+
+    let security_bits = proof.config.security_bits();
+    let res = proof.verify::<Layout>(&mut cache, security_bits).unwrap();
+
+    Ok(res)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use swiftness::{parse, types::StarkProof, TransformTo};
+    use swiftness::{parse, TransformTo};
 
-    pub fn read_proof() -> StarkProof {
+    pub fn read_proof() -> ProofAccount {
         let small_json = include_str!("../resources/small.json");
         let stark_proof = parse(small_json).unwrap();
-        stark_proof.transform_to()
+        let proof = stark_proof.transform_to();
+
+        ProofAccount {
+            proof,
+            ..Default::default()
+        }
     }
 
     #[test]
     fn test_deserialize_proof() {
-        let stark_proof: StarkProof = read_proof();
-        let stark_proof_memory = bytemuck::bytes_of(&stark_proof);
+        let mut proof_account: ProofAccount = read_proof();
+        let proof_account_memory = bytemuck::bytes_of_mut(&mut proof_account);
 
-        let stark_proof = bytemuck::from_bytes::<StarkProof>(stark_proof_memory);
-
-        let security_bits = stark_proof.config.security_bits();
-        let (program_hash, output) = stark_proof.verify::<Layout>(security_bits).unwrap();
+        let (program_hash, output) = verify_recursive_bytes(proof_account_memory).unwrap();
 
         let output = output
             .into_iter()
