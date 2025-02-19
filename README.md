@@ -54,3 +54,11 @@ To only verify already uploaded proofs, run the validate example, but update the
 ```bash
 cargo run --example validate
 ```
+
+## Tests
+
+Run the tests, requires more stack space than default.
+
+```bash
+RUST_MIN_STACK=4096000 cargo test
+```

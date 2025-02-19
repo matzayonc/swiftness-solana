@@ -69,32 +69,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     client.send_and_confirm_transaction(&tx).await.unwrap();
 
-    // let res = client
-    //     .send_and_confirm_transaction_with_spinner_and_config(
-    //         &tx,
-    //         CommitmentConfig::processed(),
-    //         RpcSendTransactionConfig {
-    //             skip_preflight: true,
-    //             max_retries: Some(10),
-    //             ..Default::default()
-    //         },
-    //     )
-    //     .await;
-
-    // if let Err(e) = res {
-    //     if let ErrorKind::TransactionError(TransactionError::InstructionError(
-    //         _,
-    //         InstructionError::Custom(code),
-    //     )) = e.kind
-    //     {
-    //         println!("Verification failed with code {}", code);
-    //     } else {
-    //         println!("Verification failed without custom code");
-    //         eprintln!("{:?}", e);
-    //     }
-    // } else {
-    //     println!("Verification successful");
-    // }
-
     Ok(())
 }

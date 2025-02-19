@@ -35,9 +35,6 @@ pub fn process_instruction(
     account_info: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    // if program_id != &Pubkey::from_str(PROGRAM_ID).unwrap() {
-    //     return Err(ProgramError::Custom(1));
-    // }
     let instruction: Entrypoint = bincode::deserialize(instruction_data).unwrap();
     msg!("instruction");
     let accounts_iter = &mut account_info.iter();
