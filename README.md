@@ -1,39 +1,45 @@
 # Swiftness Solana Program
 
-Program Id: x7dqKWiBUcWXzRVjdK3UeeFMPiRDivhrnmt2hoCZbwA
+Solana program, using Swiftness to verify Cairo proofs on the Solana blockchain.
 
-## Local Development
+## Local Node Setup
 
-Start Local Solana Validator and set it as default endpoint
+Use the Solana CLI to create a new account.
+
+```bash
+solana-keygen new
+```
+
+Start Local Validator and set it as default endpoint
 
 ```bash
 solana-test-validator
 solana config set -u localhost
 ```
 
-Create a new account and request funds from the local validator
+## Program Setup
+
+Build the program, this will generate a new program id.
 
 ```bash
-solana-keygen new
-solana airdrop 100
+cargo build-sbf
 ```
 
-Build Program
+Update the program id in `src/lib.rs`, this has to be done only once.
 
 ```bash
-cargo build-bpf
+solana address -k target/deploy/swiftness_solana-keypair.json
 ```
 
-Build and deploy Program
+Proceed to deploy the program.
+
+## Deployment
+
+After setting up, new changes can be made to the program by rebuilding and redeploying.
 
 ```bash
-cargo build-bpf && solana program deploy target/deploy/swiftness.so
+cargo build-sbf && solana program deploy target/deploy/swiftness_solana.so
 ```
-
-Notice:
-
-- Program id has to be hardcoded in `src/lib.rs`
-- Program id will change after each build on a new machine
 
 ## Usage
 
@@ -41,4 +47,10 @@ Run client to send and verify an example proof
 
 ```bash
 cargo run --example client
+```
+
+To only verify already uploaded proofs, run the validate example, but update the address of the proof data account.
+
+```bash
+cargo run --example validate
 ```

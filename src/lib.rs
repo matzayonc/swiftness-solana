@@ -13,7 +13,7 @@ mod allocator;
 // declare and export the program's entrypoint
 entrypoint!(process_instruction);
 
-pub const PROGRAM_ID: &str = "GiakVnic8keq93sh2TBx8X51Snqqi1FwcPhFyze7YnkU";
+pub const PROGRAM_ID: &str = "BhuzZNKFZ6VQciB1T2BbQuzXo7ZbsVc9krxEfHb9KFh9";
 
 #[repr(u8)]
 #[derive(Serialize, Deserialize)]
@@ -76,10 +76,10 @@ pub fn process_instruction(
 pub fn verify_recursive_bytes(
     proof_account: &mut [u8],
 ) -> Result<(Felt, Vec<Felt>), ProgramResult> {
-    let ProofAccount { proof, mut cache } = bytemuck::from_bytes::<ProofAccount>(&proof_account);
+    let ProofAccount { proof, cache } = bytemuck::from_bytes_mut::<ProofAccount>(proof_account);
 
     let security_bits = proof.config.security_bits();
-    let res = proof.verify::<Layout>(&mut cache, security_bits).unwrap();
+    let res = proof.verify::<Layout>(cache, security_bits).unwrap();
 
     Ok(res)
 }

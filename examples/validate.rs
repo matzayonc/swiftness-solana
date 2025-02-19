@@ -38,16 +38,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Using keypair {}, at {}", payer.pubkey(), client.url());
 
-    let data_address = Pubkey::from_str("7vWJWEhHxm7oxtoeuptEEW5KDnCrHsK3RNsyxaT1szCX").unwrap();
+    let data_address = Pubkey::from_str("4qoXS5VodPggh8Mhq3baFx6Nhchx2KDGU4strZMq4fEb").unwrap();
     let mut data = client.get_account_data(&data_address).await?;
 
     let proof_account = bytemuck::from_bytes::<ProofAccount>(&data);
     if proof_account.proof != read_proof() {
         eprintln!("data in the account does not match the proof");
-    } else {
-        if let Err(e) = verify_recursive_bytes(&mut data) {
-            eprintln!("Local verification failed: {:?}", e);
-        }
+    } else if let Err(e) = verify_recursive_bytes(&mut data) {
+        eprintln!("Local verification failed: {:?}", e);
     }
 
     let ix = Instruction {

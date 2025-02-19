@@ -121,32 +121,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // for (section, section_data) in stark_proof.chunks(10000).enumerate() {
     // Allocate data instructions
 
-    for (big_chunk, big_data) in stark_proof.chunks(CHUNK_SIZE * 20).enumerate() {
+    let instructions = stark_proof
+        .chunks(CHUNK_SIZE)
+        .enumerate()
+        .map(|(i, data)| Instruction {
+            program_id,
+            accounts: vec![AccountMeta::new(proof_data_account.pubkey(), false)],
+            data: bincode::serialize(&Entrypoint::PublishFragment {
+                offset: i * CHUNK_SIZE,
+                data,
+            })
+            .unwrap(),
+        })
+        .collect::<Vec<_>>();
+
+    for instructions in instructions.chunks(50) {
         loop {
             let blockhash = client
                 .get_latest_blockhash()
                 .await
                 .expect("failed to connect to rpc");
-            let instructions: Vec<Instruction> = big_data
-                .chunks(CHUNK_SIZE)
-                .enumerate()
-                .map(|(chunk, data)| Instruction {
-                    program_id,
-                    accounts: vec![AccountMeta::new(proof_data_account.pubkey(), false)],
-                    data: bincode::serialize(&Entrypoint::PublishFragment {
-                        offset: chunk * CHUNK_SIZE + big_chunk * CHUNK_SIZE * 20,
-                        data,
-                    })
-                    .unwrap(),
-                })
-                .collect();
 
             // Create corresponding transactions
             let transactions = instructions
-                .into_iter()
+                .iter()
                 .map(|instruction| {
                     Transaction::new_signed_with_payer(
-                        &[instruction],
+                        &[instruction.clone()],
                         Some(&payer.pubkey()),
                         &[&payer],
                         blockhash,
